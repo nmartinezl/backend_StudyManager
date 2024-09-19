@@ -14,11 +14,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Configuración de la base de datos 
 const db = mysql.createConnection({
-    host: "sql10.freesqldatabase.com",  // Host proporcionado por tu base de datos (sin 'http://' y sin '/')
-    user: "sql10731913",                // Usuario de la base de datos 
-    password: "ihCi9kYJDP",               // Contraseña de la base de datos 
-    database: "sql10731913",            // Nombre de tu base de datos 
-    port: 3306                          // Puerto de la base de datos 
+    host: process.env.DB_HOST,  // Usar las variables de entorno
+    user: process.env.DB_USER,                
+    password: process.env.DB_PASSWORD,               
+    database: process.env.DB_DATABASE,            
+    port: 3306 // puerto de la base de datos en freesql
 });
 
 db.connect((err) => {
