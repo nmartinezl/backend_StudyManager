@@ -9,6 +9,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+
+const cors = require('cors');
+app.use(cors({
+    origin: '*',  // Permite cualquier origen
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],  // Permite estos métodos
+    allowedHeaders: ['Content-Type']  // Permite estos encabezados
+}));
+
 // Servir archivos estáticos (HTML, CSS, JS, etc.)
 app.use(express.static(path.join(__dirname, 'public')));
 
