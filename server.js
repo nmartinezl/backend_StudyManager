@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const mysql = require('mysql');
 const cors = require('cors');
-const bcrypt = require('bcryptjs');// Importar bcryptjs
+const bcrypt = require('bcryptjs'); // Importar bcryptjs
 const path = require('path');
 const app = express();
 
@@ -18,52 +18,75 @@ app.use(cors({
     allowedHeaders: ['Content-Type']  // Permite estos encabezados
 }));
 
-// Configuración de la base de datos 
-const db = mysql.createConnection({
-    host: process.env.DB_HOST,  // Usar las variables de entorno
-    user: process.env.DB_USER,                
-    password: process.env.DB_PASSWORD,               
-    database: process.env.DB_DATABASE,            
-    port: 3306 // puerto de la base de datos en freesql
+// Crear un pool de conexiones
+const db = mysql.createPool({
+    connectionLimit: 10, // Límite de conexiones en el pool
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_DATABASE,
+    port: 3306
 });
 
-db.connect((err) => {
-    if (err) {
-        console.error('Error conectando a la base de datos:', err);
-        return;
-    }
-    console.log('Conectado a la base de datos MySQL en localhost.');
-
-    // Verificar si el usuario admin ya existe
-    const adminEmail = 'admin@admin.com';
-    const adminPassword = '1234';  // Contraseña por defecto
-
-    db.query('SELECT * FROM estudiantes WHERE email = ?', [adminEmail], (err, results) => {
+// Manejo de reconexiones automáticas
+function handleDisconnect() {
+    db.getConnection((err, connection) => {
         if (err) {
-            console.error('Error al verificar el usuario admin:', err);
-            return;
-        }
-        if (results.length === 0) {
-            // Si el usuario admin no existe, lo creamos
-            bcrypt.hash(adminPassword, 10, (err, hash) => {  // Hasheamos la contraseña
-                if (err) {
-                    console.error('Error al hashear la contraseña de admin:', err);
-                    return;
-                }
-
-                const query = 'INSERT INTO estudiantes (nombre, apellido, dni, email, password, activo) VALUES (?, ?, ?, ?, ?, 1)';
-                db.query(query, ['Admin', 'Admin', '00000000', adminEmail, hash], (err, result) => {
-                    if (err) {
-                        console.error('Error al crear el usuario admin:', err);
-                        return;
-                    }
-                    console.log('Usuario admin creado por defecto.');
-                });
-            });
+            console.error('Error al conectar a la base de datos:', err);
+            setTimeout(handleDisconnect, 2000); // Intentar reconectar después de 2 segundos
         } else {
-            console.log('El usuario admin ya existe.');
+            console.log('Conexión a la base de datos MySQL establecida.');
+            connection.release(); // Liberar la conexión
         }
     });
+
+    db.on('error', (err) => {
+        console.error('Error en la base de datos:', err);
+        if (err.code === 'PROTOCOL_CONNECTION_LOST') {
+            handleDisconnect(); // Reconectar en caso de pérdida de conexión
+        } else {
+            throw err;
+        }
+    });
+}
+
+handleDisconnect();
+
+//Control de Errores en General:
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).send('Algo salió mal en el servidor.');
+});
+
+// Verificar si el usuario admin ya existe
+const adminEmail = 'admin@admin.com';
+const adminPassword = '1234';  // Contraseña por defecto
+
+db.query('SELECT * FROM estudiantes WHERE email = ?', [adminEmail], (err, results) => {
+    if (err) {
+        console.error('Error al verificar el usuario admin:', err);
+        return;
+    }
+    if (results.length === 0) {
+        // Si el usuario admin no existe, lo creamos
+        bcrypt.hash(adminPassword, 10, (err, hash) => {  // Hasheamos la contraseña
+            if (err) {
+                console.error('Error al hashear la contraseña de admin:', err);
+                return;
+            }
+
+            const query = 'INSERT INTO estudiantes (nombre, apellido, dni, email, password, activo) VALUES (?, ?, ?, ?, ?, 1)';
+            db.query(query, ['Admin', 'Admin', '00000000', adminEmail, hash], (err, result) => {
+                if (err) {
+                    console.error('Error al crear el usuario admin:', err);
+                    return;
+                }
+                console.log('Usuario admin creado por defecto.');
+            });
+        });
+    } else {
+        console.log('El usuario admin ya existe.');
+    }
 });
 
 
@@ -71,19 +94,18 @@ db.connect((err) => {
 app.post('/register', (req, res) => {
     const { nombre, apellido, dni, email, password } = req.body;
 
-    // Hashear la contraseña antes de guardarla
-    bcrypt.hash(password, 10, (err, hash) => {  // 10 es el número de rondas de sal para bcrypt
+    bcrypt.hash(password, 10, (err, hash) => {
         if (err) {
             return res.status(500).send('Error al hashear la contraseña: ' + err.message);
         }
 
-        // Insertar el usuario con la contraseña hasheada
         const query = 'INSERT INTO estudiantes (nombre, apellido, dni, email, password, activo) VALUES (?, ?, ?, ?, ?, 1)';
         db.query(query, [nombre, apellido, dni, email, hash], (err, result) => {
             if (err) {
                 return res.status(500).send('Error al registrar usuario: ' + err.message);
             }
-            res.send('Usuario registrado con éxito');
+            // Devolver más información, como el ID del usuario
+            res.status(201).json({ message: 'Usuario registrado con éxito', userId: result.insertId });
         });
     });
 });
@@ -118,11 +140,13 @@ app.post('/login', (req, res) => {
     });
 });
 
-// Lo nuevo
 // Ruta para obtener todas las carreras
 app.get('/carreras', (req, res) => {
-    const query = 'SELECT * FROM carreras';
-    db.query(query, (err, results) => {
+    const limit = parseInt(req.query.limit) || 10; // Límite de registros por página (default: 10)
+    const offset = parseInt(req.query.offset) || 0; // Paginación: inicio de los registros
+    const query = 'SELECT * FROM carreras LIMIT ? OFFSET ?';
+
+    db.query(query, [limit, offset], (err, results) => {
         if (err) {
             return res.status(500).send('Error al obtener las carreras: ' + err.message);
         }
@@ -185,13 +209,30 @@ app.post('/matricular', (req, res) => {
     });
 });
 
+
+//Endpoint para que los estudiantes puedan ver en qué materias están matriculados.
+app.get('/materias-matriculadas/:usuarioId', (req, res) => {
+    const usuarioId = req.params.usuarioId;
+    const query = 'SELECT m.nombre FROM inscripciones i JOIN materias m ON i.materia_id = m.id WHERE i.estudiante_id = ? AND i.estado = "activa"';
+
+    db.query(query, [usuarioId], (err, results) => {
+        if (err) {
+            return res.status(500).send('Error al obtener las materias matriculadas: ' + err.message);
+        }
+        res.json(results);
+    });
+});
+
 // Ruta para la página de inicio
 app.get('/', (req, res) => {
     res.send('<h1>Bienvenido al backend de Study Manager</h1><p>Esta es la API del backend, consulta la documentación para usar los endpoints disponibles.</p>');
 });
 
+// Puerto para la API en RAILWAY
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
 
+// Keep-alive para conexiones
+server.keepAliveTimeout = 60000 * 2; // 2 minutos de timeout
