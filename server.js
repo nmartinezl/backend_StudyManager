@@ -190,7 +190,8 @@ app.get('/', (req, res) => {
     res.send('<h1>Bienvenido al backend de Study Manager</h1><p>Esta es la API del backend, consulta la documentación para usar los endpoints disponibles.</p>');
 });
 
-// Escuchar en el puerto 3000
-app.listen(3000, () => {
-    console.log('Servidor corriendo en http://localhost:3000');
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
+
