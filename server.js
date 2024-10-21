@@ -21,10 +21,10 @@ app.use(cors({
 // Crear un pool de conexiones
 const db = mysql.createPool({
     connectionLimit: 10, // Límite de conexiones en el pool
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_DATABASE,
+    host: localhost,
+    user: nicoate1_mat,
+    password: ateETA967@,
+    database: process.env.nicoate1_mat,
     port: 3306
 });
 
@@ -96,16 +96,16 @@ app.post('/register', (req, res) => {
 
     bcrypt.hash(password, 10, (err, hash) => {
         if (err) {
-            return res.status(500).send('Error al hashear la contraseña: ' + err.message);
+            return res.status(500).json({ success: false, message: 'Error al hashear la contraseña: ' + err.message });
         }
 
         const query = 'INSERT INTO estudiantes (nombre, apellido, dni, email, password, activo) VALUES (?, ?, ?, ?, ?, 1)';
         db.query(query, [nombre, apellido, dni, email, hash], (err, result) => {
             if (err) {
-                return res.status(500).send('Error al registrar usuario: ' + err.message);
+                return res.status(500).json({ success: false, message: 'Error al registrar usuario: ' + err.message });
             }
             // Devolver más información, como el ID del usuario
-            res.status(201).json({ message: 'Usuario registrado con éxito', userId: result.insertId });
+            res.status(201).json({ success: true, message: 'Usuario registrado con éxito', userId: result.insertId });
         });
     });
 });
@@ -117,25 +117,31 @@ app.post('/login', (req, res) => {
     
     db.query(query, [email], (err, results) => {
         if (err) {
-            return res.status(500).send('Error al iniciar sesión: ' + err.message);
+            return res.status(500).json({ success: false, message: 'Error al iniciar sesión: ' + err.message });
         }
         if (results.length > 0) {
             console.log('Usuario encontrado:', results[0]);  // Verificar qué usuario se encontró
             // Comparar la contraseña ingresada con la contraseña hasheada almacenada
             bcrypt.compare(password, results[0].password, (err, isMatch) => {
                 if (err) {
-                    return res.status(500).send('Error al comparar contraseñas: ' + err.message);
+                    return res.status(500).json({ success: false, message: 'Error al comparar contraseñas: ' + err.message });
                 }
                 if (isMatch) {
-                    res.send('Inicio de sesión exitoso');
+                    const user = {
+                        id: results[0].id,
+                        nombre: results[0].nombre,
+                        apellido: results[0].apellido,
+                        email: results[0].email,
+                        role: results[0].role, // Incluye el rol para determinar la redirección
+                        activo: results[0].activo
+                    };
+                    res.json({ success: true, user });
                 } else {
-                    console.log('Contraseña incorrecta');  // Mensaje de depuración
-                    res.status(401).send('Correo o contraseña incorrectos');
+                    res.status(401).json({ success: false, message: 'Correo o contraseña incorrectos' });
                 }
             });
         } else {
-            console.log('Usuario no encontrado');  // Mensaje de depuración
-            res.status(401).send('Correo o contraseña incorrectos');
+            res.status(401).json({ success: false, message: 'Correo o contraseña incorrectos' });
         }
     });
 });
