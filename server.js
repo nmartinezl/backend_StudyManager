@@ -20,11 +20,10 @@ app.use(cors({
 
 // Crear un pool de conexiones
 const db = mysql.createPool({
-    connectionLimit: 10, // Límite de conexiones en el pool
-    host: localhost,
-    user: nicoate1_mat,
-    password: ateETA967@,
-    database: process.env.nicoate1_mat,
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_DATABASE,
     port: 3306
 });
 
