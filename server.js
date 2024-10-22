@@ -134,14 +134,18 @@ app.post('/login', (req, res) => {
                     return res.status(500).json({ success: false, message: 'Error al comparar contraseñas: ' + err.message });
                 }
                 if (isMatch) {
+                    // Determinar la ruta según el nombre del usuario
+                    let redirectPage = user.nombre === 'Admin' ? 'admin_page.html' : 'menu_ppal.html';
+
                     const userData = {
                         id: user.id,
                         nombre: user.nombre,
                         apellido: user.apellido,
                         email: user.email,
-                        role: user.role, // Incluye el rol para determinar la redirección
-                        activo: user.activo
+                        activo: user.activo,
+                        redirectPage: redirectPage // Página a la que redirigir según el rol
                     };
+
                     res.json({ success: true, user: userData });
                 } else {
                     res.status(401).json({ success: false, message: 'Correo o contraseña incorrectos' });
