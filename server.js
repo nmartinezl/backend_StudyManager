@@ -119,22 +119,30 @@ app.post('/login', (req, res) => {
             return res.status(500).json({ success: false, message: 'Error al iniciar sesión: ' + err.message });
         }
         if (results.length > 0) {
-            console.log('Usuario encontrado:', results[0]);  // Verificar qué usuario se encontró
+            const user = results[0];
+
+            // Verificar si el usuario está activo
+            if (user.activo === 0) {
+                return res.status(401).json({ success: false, message: 'Usuario desactivado. Por favor, comuníquese con el administrador.' });
+            }
+
+            console.log('Usuario encontrado:', user);  // Verificar qué usuario se encontró
+            
             // Comparar la contraseña ingresada con la contraseña hasheada almacenada
-            bcrypt.compare(password, results[0].password, (err, isMatch) => {
+            bcrypt.compare(password, user.password, (err, isMatch) => {
                 if (err) {
                     return res.status(500).json({ success: false, message: 'Error al comparar contraseñas: ' + err.message });
                 }
                 if (isMatch) {
-                    const user = {
-                        id: results[0].id,
-                        nombre: results[0].nombre,
-                        apellido: results[0].apellido,
-                        email: results[0].email,
-                        role: results[0].role, // Incluye el rol para determinar la redirección
-                        activo: results[0].activo
+                    const userData = {
+                        id: user.id,
+                        nombre: user.nombre,
+                        apellido: user.apellido,
+                        email: user.email,
+                        role: user.role, // Incluye el rol para determinar la redirección
+                        activo: user.activo
                     };
-                    res.json({ success: true, user });
+                    res.json({ success: true, user: userData });
                 } else {
                     res.status(401).json({ success: false, message: 'Correo o contraseña incorrectos' });
                 }
