@@ -109,6 +109,7 @@ app.post('/register', (req, res) => {
     });
 });
 
+
 // Ruta para iniciar sesión
 app.post('/login', (req, res) => {
     const { email, password } = req.body;
@@ -134,18 +135,14 @@ app.post('/login', (req, res) => {
                     return res.status(500).json({ success: false, message: 'Error al comparar contraseñas: ' + err.message });
                 }
                 if (isMatch) {
-                    // Determinar la ruta según el nombre del usuario
-                    let redirectPage = user.nombre === 'Admin' ? 'admin_page.html' : 'menu_ppal.html';
-
                     const userData = {
                         id: user.id,
                         nombre: user.nombre,
                         apellido: user.apellido,
                         email: user.email,
                         activo: user.activo,
-                        redirectPage: redirectPage // Página a la que redirigir según el rol
+                        esAdmin: user.nombre.toLowerCase() === 'admin' // Comprobamos si es admin por el nombre
                     };
-
                     res.json({ success: true, user: userData });
                 } else {
                     res.status(401).json({ success: false, message: 'Correo o contraseña incorrectos' });
@@ -156,6 +153,7 @@ app.post('/login', (req, res) => {
         }
     });
 });
+
 
 // Ruta para obtener todas las carreras
 app.get('/carreras', (req, res) => {
