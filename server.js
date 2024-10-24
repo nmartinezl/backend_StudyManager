@@ -6,17 +6,17 @@ const bcrypt = require('bcryptjs'); // Importar bcryptjs
 const path = require('path');
 const app = express();
 
-// Configuración de CORS
-app.use(cors({
-    origin: '*',  // Permitir cualquier origen
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],  // Permitir estos métodos
-    allowedHeaders: ['Content-Type', 'Authorization'],  // Permitir estos encabezados
-}));
-
+app.use(cors());
 app.use(express.json());
 
 // Servir archivos estáticos (HTML, CSS, JS, etc.)
 app.use(express.static(path.join(__dirname, 'public')));
+
+app.use(cors({
+    origin: '*',  // Permite cualquier origen
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],  // Permite estos métodos
+    allowedHeaders: ['Content-Type']  // Permite estos encabezados
+}));
 
 // Crear un pool de conexiones
 const db = mysql.createPool({
@@ -51,60 +51,10 @@ function handleDisconnect() {
 
 handleDisconnect();
 
-// Ruta para iniciar sesión
-app.post('/login', (req, res) => {
-    const { email, password } = req.body;
-    const query = 'SELECT * FROM estudiantes WHERE email = ?';
-    
-    db.query(query, [email], (err, results) => {
-        if (err) {
-            return res.status(500).json({ success: false, message: 'Error al iniciar sesión: ' + err.message });
-        }
-        if (results.length > 0) {
-            const user = results[0];
-
-            // Verificar si el usuario está activo
-            if (user.activo === 0) {
-                return res.status(401).json({ success: false, message: 'Usuario desactivado. Por favor, comuníquese con el administrador.' });
-            }
-
-            console.log('Usuario encontrado:', user);  // Verificar qué usuario se encontró
-            
-            // Comparar la contraseña ingresada con la contraseña hasheada almacenada
-            bcrypt.compare(password, user.password, (err, isMatch) => {
-                if (err) {
-                    return res.status(500).json({ success: false, message: 'Error al comparar contraseñas: ' + err.message });
-                }
-                if (isMatch) {
-                    const userData = {
-                        id: user.id,
-                        nombre: user.nombre,
-                        apellido: user.apellido,
-                        email: user.email,
-                        role: user.nombre === 'Admin' ? 'admin' : 'user', // Determinar el rol basado en el nombre
-                        activo: user.activo
-                    };
-                    res.json({ success: true, user: userData });
-                } else {
-                    res.status(401).json({ success: false, message: 'Correo o contraseña incorrectos' });
-                }
-            });
-        } else {
-            res.status(401).json({ success: false, message: 'Correo o contraseña incorrectos' });
-        }
-    });
-});
-
 //Control de Errores en General:
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).send('Algo salió mal en el servidor.');
-});
-
-// Iniciar el servidor
-
-app.listen(PORT, () => {
-    console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
 
 // Verificar si el usuario admin ya existe
