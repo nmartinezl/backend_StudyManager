@@ -126,8 +126,6 @@ app.post('/login', (req, res) => {
                 return res.status(401).json({ success: false, message: 'Usuario desactivado. Por favor, comuníquese con el administrador.' });
             }
 
-            console.log('Usuario encontrado:', user);
-
             // Comparar la contraseña ingresada con la contraseña hasheada almacenada
             bcrypt.compare(password, user.password, (err, isMatch) => {
                 if (err) {
@@ -139,7 +137,6 @@ app.post('/login', (req, res) => {
                         nombre: user.nombre,
                         apellido: user.apellido,
                         email: user.email,
-                        role: user.nombre === 'Admin' ? 'admin' : 'user', // Verificar si es admin por nombre
                         activo: user.activo
                     };
                     res.json({ success: true, user: userData });
@@ -152,6 +149,7 @@ app.post('/login', (req, res) => {
         }
     });
 });
+
 
 // Ruta para obtener todas las carreras
 app.get('/carreras', (req, res) => {
