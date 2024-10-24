@@ -109,7 +109,6 @@ app.post('/register', (req, res) => {
     });
 });
 
-
 // Ruta para iniciar sesión
 app.post('/login', (req, res) => {
     const { email, password } = req.body;
@@ -127,8 +126,8 @@ app.post('/login', (req, res) => {
                 return res.status(401).json({ success: false, message: 'Usuario desactivado. Por favor, comuníquese con el administrador.' });
             }
 
-            console.log('Usuario encontrado:', user);  // Verificar qué usuario se encontró
-            
+            console.log('Usuario encontrado:', user);
+
             // Comparar la contraseña ingresada con la contraseña hasheada almacenada
             bcrypt.compare(password, user.password, (err, isMatch) => {
                 if (err) {
@@ -140,8 +139,8 @@ app.post('/login', (req, res) => {
                         nombre: user.nombre,
                         apellido: user.apellido,
                         email: user.email,
-                        activo: user.activo,
-                        esAdmin: user.nombre.toLowerCase() === 'admin' // Comprobamos si es admin por el nombre
+                        role: user.nombre === 'Admin' ? 'admin' : 'user', // Verificar si es admin por nombre
+                        activo: user.activo
                     };
                     res.json({ success: true, user: userData });
                 } else {
@@ -153,7 +152,6 @@ app.post('/login', (req, res) => {
         }
     });
 });
-
 
 // Ruta para obtener todas las carreras
 app.get('/carreras', (req, res) => {
